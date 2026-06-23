@@ -50,7 +50,7 @@ app.post('/api/obfuscate', (req, res) => {
             [
                 'Prometheus/cli.lua',
                 '--preset',
-                'High',                // ✅ Dito binago
+                'Medium',                // ⬅️ Binalik sa Medium
                 '--file',
                 inputFile,
                 '--out',
@@ -308,7 +308,7 @@ app.get('/docs', (req, res) => {
                     <div class="code-block">
 { "code": "print('Hello world')" }
                     </div>
-                    <p style="color: #94a3b8;">Currently using <strong style="color: #f472b6;">High</strong> preset – strong obfuscation.</p>
+                    <p style="color: #94a3b8;">Currently using <strong style="color: #f472b6;">Medium</strong> preset – balanced obfuscation.</p>
                 </div>
 
                 <div class="card">
@@ -320,7 +320,7 @@ app.get('/docs', (req, res) => {
                 </div>
 
                 <div class="note">
-                    ⚡ <strong>Note:</strong> The <strong>High</strong> preset provides maximum protection but may slightly affect performance. Test your scripts after obfuscation.
+                    ⚡ <strong>Note:</strong> The <strong>Medium</strong> preset provides a good balance between protection and performance.
                 </div>
             </div>
         </body>
