@@ -1,18 +1,16 @@
 FROM node:18-alpine
 
-# I-install ang Lua at Git
-RUN apk add --no-cache lua5.3 lua5.3-dev git
+# Gagamit tayo ng luajit para mas tugma sa Prometheus engine
+RUN apk add --no-cache luajit git
 
 WORKDIR /app
 
-# Kopyahin ang package.json at mag-install
 COPY package.json ./
 RUN npm install
 
-# I-clone ang Prometheus directly sa server
+# I-clone ang Prometheus
 RUN git clone https://github.com/prometheus-lua/Prometheus.git
 
-# Kopyahin ang server.js
 COPY . .
 
 EXPOSE 3000
