@@ -4,6 +4,7 @@ const fs = require('fs');
 const session = require('express-session');
 const { execFile } = require('child_process');
 const { randomUUID } = require('crypto');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 
@@ -21,7 +22,14 @@ app.use(session({
 
 const PASSWORD = "sttaralbiola";
 
-// ================== OBFS API ==================
+// ================== SUPABASE SETUP (HARDCODED) ==================
+const supabaseUrl = "https://vwtzbbxzcokqiggkmowc.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3dHpiYnh6Y29rcWlnZ2ttb3djIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjIzMDQ0MiwiZXhwIjoyMDk3ODA2NDQyfQ.vtZ9uXyLXLnwCxglqnHvIqqM8oxuWOYt4Qi-ludGmGo";
+const bucketName = "obfuscated";
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// ================== OBFS API (LOADER SCRIPT) ==================
 app.post('/api/obfuscate', (req, res) => {
     const rawCode = req.body.code;
 
@@ -49,14 +57,11 @@ app.post('/api/obfuscate', (req, res) => {
             'luajit',
             [
                 'Prometheus/cli.lua',
-                '--preset',
-                'Medium',                // ⬅️ Binalik sa Medium
-                '--file',
-                inputFile,
-                '--out',
-                outputFile
+                '--preset', 'Medium',
+                '--file', inputFile,
+                '--out', outputFile
             ],
-            (error, stdout, stderr) => {
+            async (error, stdout, stderr) => {
                 if (error) {
                     console.error("Engine error:", stderr || error.message);
                     cleanup();
@@ -69,14 +74,42 @@ app.post('/api/obfuscate', (req, res) => {
                         return res.status(500).json({ error: 'No output generated.' });
                     }
 
-                    const result = fs.readFileSync(outputFile, 'utf8');
+                    const obfuscatedCode = fs.readFileSync(outputFile, 'utf8');
+                    
+                    // Upload sa Supabase bucket
+                    const fileName = `${id}.lua`;
+                    const { error: uploadError } = await supabase
+                        .storage
+                        .from(bucketName)
+                        .upload(fileName, Buffer.from(obfuscatedCode, 'utf8'), {
+                            contentType: 'text/plain',
+                            upsert: true
+                        });
+
+                    if (uploadError) {
+                        console.error("Upload error:", uploadError.message);
+                        cleanup();
+                        return res.status(500).json({ error: 'Failed to upload.' });
+                    }
+
+                    // Kunin public URL
+                    const { data: urlData } = supabase
+                        .storage
+                        .from(bucketName)
+                        .getPublicUrl(fileName);
+
+                    const publicUrl = urlData.publicUrl;
+
+                    // Bumuo ng loader script
+                    const loader = `loadstring(game:HttpGet("${publicUrl}"))()`;
+
                     cleanup();
-                    return res.json({ result });
+                    return res.json({ result: loader });
 
                 } catch (err) {
-                    console.error("Read error:", err.message);
+                    console.error("Error:", err.message);
                     cleanup();
-                    return res.status(500).json({ error: 'Failed to read output.' });
+                    return res.status(500).json({ error: 'Failed to process.' });
                 }
             }
         );
@@ -88,10 +121,9 @@ app.post('/api/obfuscate', (req, res) => {
     }
 });
 
-// ================== DOCS PAGE (PINAGANDA) ==================
+// ================== DOCS PAGE ==================
 app.get('/docs', (req, res) => {
     if (!req.session.authenticated) {
-        // Login form – styled din
         return res.send(`
             <!DOCTYPE html>
             <html lang="en">
@@ -181,7 +213,6 @@ app.get('/docs', (req, res) => {
         `);
     }
 
-    // Authenticated docs page – modern & clean
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -299,28 +330,25 @@ app.get('/docs', (req, res) => {
                 <div class="card">
                     <h2>🔹 Endpoint</h2>
                     <p><span class="method">POST</span><span class="endpoint">/api/obfuscate</span></p>
-                    <p style="margin-top: 15px; color: #94a3b8;">Send your Lua code and receive an obfuscated version.</p>
+                    <p style="margin-top: 15px; color: #94a3b8;">Send Lua code, get a <strong>loader script</strong> with obfuscated code stored on Supabase.</p>
                 </div>
 
                 <div class="card">
                     <h2>📥 Request Body</h2>
-                    <p style="margin-bottom: 10px; color: #94a3b8;">JSON format</p>
                     <div class="code-block">
 { "code": "print('Hello world')" }
                     </div>
-                    <p style="color: #94a3b8;">Currently using <strong style="color: #f472b6;">Medium</strong> preset – balanced obfuscation.</p>
                 </div>
 
                 <div class="card">
-                    <h2>📤 Response</h2>
-                    <p style="color: #94a3b8;">Returns JSON with obfuscated code:</p>
+                    <h2>📤 Response (Loader)</h2>
                     <div class="code-block">
-{ "result": "local v0 = ... (obfuscated) ..." }
+loadstring(game:HttpGet("https://...supabase.../obfuscated/..."))()
                     </div>
                 </div>
 
                 <div class="note">
-                    ⚡ <strong>Note:</strong> The <strong>Medium</strong> preset provides a good balance between protection and performance.
+                    ⚡ <strong>Note:</strong> Obfuscated code is stored securely in Supabase. Medium preset.
                 </div>
             </div>
         </body>
@@ -331,13 +359,10 @@ app.get('/docs', (req, res) => {
 // ================== LOGIN CHECK ==================
 app.post('/docs', (req, res) => {
     const { password } = req.body;
-
     if (password === PASSWORD) {
         req.session.authenticated = true;
         return res.redirect('/docs');
     }
-
-    // Wrong password page with improved style
     return res.send(`
         <!DOCTYPE html>
         <html>
