@@ -1,51 +1,98 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
+const { randomUUID } = require('crypto');
 
 const app = express();
 
-// Pinapayagan nito ang LuaShield (Lovable AI) na makakonekta sa server mo
-app.use(cors()); 
-app.use(express.json()); 
+// Security / limits
+app.use(cors());
+app.use(express.json({ limit: '1mb' }));
+app.disable('x-powered-by');
 
 app.post('/api/obfuscate', (req, res) => {
     const rawCode = req.body.code;
-    if (!rawCode) return res.status(400).json({ error: 'Walang code na nilagay!' });
 
-    const id = Date.now();
+    if (!rawCode) {
+        return res.status(400).json({ error: 'Walang code na nilagay!' });
+    }
+
+    const id = randomUUID();
     const inputFile = `temp_in_${id}.lua`;
     const outputFile = `temp_out_${id}.lua`;
 
-    // 1. I-save muna ang pinadalang code ng user
-    fs.writeFileSync(inputFile, rawCode);
-
-    // 2. Patakbuhin ang Prometheus gamit ang luajit (Mas stable sa Alpine Linux ng Render)
-    const cmd = `luajit Prometheus/cli.lua --preset Medium --file ${inputFile} --out ${outputFile}`;
-
-    exec(cmd, (error, stdout, stderr) => {
-        if (error) {
-            console.error('Engine Error:', stderr);
+    const cleanup = () => {
+        try {
             if (fs.existsSync(inputFile)) fs.unlinkSync(inputFile);
-            return res.status(500).json({ error: 'Nag-fail ang obfuscation engine.' });
+            if (fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
+        } catch (e) {
+            console.error('Cleanup error:', e.message);
         }
+    };
 
-        // 3. Basahin ang resulta at ibalik sa LuaShield
-        if (fs.existsSync(outputFile)) {
-            const obfuscatedCode = fs.readFileSync(outputFile, 'utf8');
-            
-            res.json({ result: obfuscatedCode });
+    try {
+        // 1. Save input
+        fs.writeFileSync(inputFile, rawCode);
 
-            // 4. Burahin ang mga temporary files para malinis ang server
-            fs.unlinkSync(inputFile);
-            fs.unlinkSync(outputFile);
-        } else {
-            res.status(500).json({ error: 'Walang lumabas na output file mula sa engine.' });
-        }
-    });
+        // 2. Run Prometheus safely (NO shell injection risk)
+        execFile(
+            'luajit',
+            [
+                'Prometheus/cli.lua',
+                '--preset',
+                'Medium',
+                '--file',
+                inputFile,
+                '--out',
+                outputFile
+            ],
+            (error, stdout, stderr) => {
+                if (error) {
+                    console.error('Engine Error:', stderr || error.message);
+                    cleanup();
+                    return res.status(500).json({
+                        error: 'Nag-fail ang obfuscation engine.'
+                    });
+                }
+
+                try {
+                    if (!fs.existsSync(outputFile)) {
+                        cleanup();
+                        return res.status(500).json({
+                            error: 'Walang output na nabuong file.'
+                        });
+                    }
+
+                    const obfuscatedCode = fs.readFileSync(outputFile, 'utf8');
+
+                    cleanup();
+
+                    return res.json({
+                        result: obfuscatedCode
+                    });
+
+                } catch (readErr) {
+                    console.error('Read Error:', readErr.message);
+                    cleanup();
+                    return res.status(500).json({
+                        error: 'Error sa pagbabasa ng output.'
+                    });
+                }
+            }
+        );
+
+    } catch (err) {
+        console.error('Server Error:', err.message);
+        cleanup();
+        return res.status(500).json({
+            error: 'Internal server error.'
+        });
+    }
 });
 
-// Siguraduhing naka-set sa port ng Render o sa port 3000
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
-        
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
