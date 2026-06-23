@@ -19,20 +19,11 @@ app.use(session({
     saveUninitialized: true
 }));
 
-// ================== CONFIG ==================
 const PASSWORD = "sttaralbiola";
-const ALLOWED_PRESETS = ['Low', 'Medium', 'High'];
 
 // ================== OBFS API ==================
 app.post('/api/obfuscate', (req, res) => {
     const rawCode = req.body.code;
-
-    // NEW: customizable strength
-    let preset = req.body.strength || 'Medium';
-
-    if (!ALLOWED_PRESETS.includes(preset)) {
-        preset = 'Medium';
-    }
 
     if (!rawCode) {
         return res.status(400).json({ error: 'Walang code na nilagay!' });
@@ -52,16 +43,14 @@ app.post('/api/obfuscate', (req, res) => {
     };
 
     try {
-        // save input
         fs.writeFileSync(inputFile, rawCode);
 
-        // run Prometheus safely
         execFile(
             'luajit',
             [
                 'Prometheus/cli.lua',
                 '--preset',
-                preset,
+                'Medium',
                 '--file',
                 inputFile,
                 '--out',
@@ -71,34 +60,25 @@ app.post('/api/obfuscate', (req, res) => {
                 if (error) {
                     console.error("Engine error:", stderr || error.message);
                     cleanup();
-                    return res.status(500).json({
-                        error: 'Obfuscation failed.'
-                    });
+                    return res.status(500).json({ error: 'Obfuscation failed.' });
                 }
 
                 try {
                     if (!fs.existsSync(outputFile)) {
                         cleanup();
-                        return res.status(500).json({
-                            error: 'No output generated.'
-                        });
+                        return res.status(500).json({ error: 'No output generated.' });
                     }
 
                     const result = fs.readFileSync(outputFile, 'utf8');
 
                     cleanup();
 
-                    return res.json({
-                        preset,
-                        result
-                    });
+                    return res.json({ result });
 
                 } catch (err) {
                     console.error("Read error:", err.message);
                     cleanup();
-                    return res.status(500).json({
-                        error: 'Failed to read output.'
-                    });
+                    return res.status(500).json({ error: 'Failed to read output.' });
                 }
             }
         );
@@ -115,11 +95,11 @@ app.get('/docs', (req, res) => {
     if (!req.session.authenticated) {
         return res.send(`
             <html>
-            <body style="font-family:Arial;text-align:center;margin-top:100px;">
+            <body style="font-family: Arial; text-align:center; margin-top:100px;">
                 <h2>🔐 Enter Password</h2>
                 <form method="POST" action="/docs">
                     <input type="password" name="password" placeholder="Password"
-                        style="padding:10px;width:200px;" />
+                        style="padding:10px; width:200px;" />
                     <br><br>
                     <button style="padding:10px 20px;">Enter</button>
                 </form>
@@ -130,26 +110,18 @@ app.get('/docs', (req, res) => {
 
     res.send(`
         <html>
-        <body style="font-family:Arial;margin:40px;">
-            <h1>📚 Obfuscator API Docs</h1>
+        <body style="font-family: Arial; margin:40px;">
+            <h1>📚 API Docs</h1>
+            <p>Welcome to Obfuscator API</p>
 
-            <h3>POST /api/obfuscate</h3>
+            <h3>Endpoint:</h3>
+            <pre>POST /api/obfuscate</pre>
 
-            <pre>
-Body:
-{
-  "code": "your lua code",
-  "strength": "Low | Medium | High"
-}
-            </pre>
+            <h3>Body:</h3>
+            <pre>{ "code": "your lua code" }</pre>
 
             <h3>Response:</h3>
-            <pre>
-{
-  "preset": "High",
-  "result": "obfuscated code"
-}
-            </pre>
+            <pre>{ "result": "obfuscated code" }</pre>
 
             <br><br>
             <a href="/logout">Logout</a>
@@ -158,7 +130,7 @@ Body:
     `);
 });
 
-// ================== LOGIN ==================
+// ================== LOGIN CHECK ==================
 app.post('/docs', (req, res) => {
     const { password } = req.body;
 
@@ -180,9 +152,8 @@ app.get('/logout', (req, res) => {
     });
 });
 
-// ================== START ==================
+// ================== START SERVER ==================
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
