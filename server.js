@@ -49,6 +49,9 @@ app.post('/api/obfuscate', (req, res) => {
     const inputFile = path.join(TEMP_DIR, `temp_in_${id}.lua`);
     const outputFile = path.join(TEMP_DIR, `temp_out_${id}.lua`);
 
+    console.log(`[${id}] Received code, length: ${rawCode.length}`);
+    console.log(`[${id}] Prometheus CLI exists:`, fs.existsSync(PROMETHEUS_CLI), 'at', PROMETHEUS_CLI);
+
     const cleanup = () => {
         try {
             if (fs.existsSync(inputFile)) fs.unlinkSync(inputFile);
@@ -60,6 +63,11 @@ app.post('/api/obfuscate', (req, res) => {
 
     try {
         fs.writeFileSync(inputFile, rawCode);
+
+        // Verify the file was actually written with the expected content
+        const writtenCheck = fs.readFileSync(inputFile, 'utf8');
+        console.log(`[${id}] Verified written file size: ${writtenCheck.length} bytes`);
+        console.log(`[${id}] First 80 chars written:`, JSON.stringify(writtenCheck.slice(0, 80)));
 
         // NOTE: Prometheus' cli.lua takes the input file as a plain
         // positional argument — there is no --file flag. Passing --file
@@ -73,8 +81,10 @@ app.post('/api/obfuscate', (req, res) => {
                 '--out', outputFile
             ],
             async (error, stdout, stderr) => {
+                console.log(`[${id}] CLI stdout:`, stdout);
+                console.log(`[${id}] CLI stderr:`, stderr);
                 if (error) {
-                    console.error("Engine error:", stderr || error.message);
+                    console.error(`[${id}] Engine error:`, stderr || error.message);
                     cleanup();
                     return res.status(500).json({ error: 'Obfuscation failed.' });
                 }
@@ -420,4 +430,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-                                
+                        
