@@ -1,23 +1,19 @@
-FROM node:18-alpine
+FROM node:20-bullseye
 
-# Install dependencies
-RUN apk add --no-cache luajit git
+# Luajit/Lua5.1 are needed to run Prometheus' cli.lua
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends luajit lua5.1 git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Node deps
-COPY package.json ./
-RUN npm install
+COPY package*.json ./
+RUN npm install --omit=dev
 
-# Clone Prometheus directly into correct path
-RUN git clone https://github.com/prometheus-lua/Prometheus.git /app/Prometheus
-
-# Copy app source
 COPY . .
 
-# Security / performance (optional but good)
-ENV NODE_ENV=production
+# If the Prometheus folder isn't already committed in your repo, uncomment:
+RUN git clone https://github.com/prometheus-lua/Prometheus.git Prometheus
 
 EXPOSE 3000
-
 CMD ["node", "server.js"]
