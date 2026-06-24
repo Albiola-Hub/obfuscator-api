@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const session = require('express-session');
 const { execFile } = require('child_process');
 const { randomUUID } = require('crypto');
@@ -29,6 +31,12 @@ const bucketName = "obfuscated";
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// ================== PATH TO PROMETHEUS CLI ==================
+// __dirname-based so it resolves correctly no matter what the process's
+// working directory is on Render.
+const PROMETHEUS_CLI = path.join(__dirname, 'Prometheus', 'cli.lua');
+const TEMP_DIR = os.tmpdir();
+
 // ================== OBFS API (LOADER SCRIPT) ==================
 app.post('/api/obfuscate', (req, res) => {
     const rawCode = req.body.code;
@@ -38,8 +46,8 @@ app.post('/api/obfuscate', (req, res) => {
     }
 
     const id = randomUUID();
-    const inputFile = `temp_in_${id}.lua`;
-    const outputFile = `temp_out_${id}.lua`;
+    const inputFile = path.join(TEMP_DIR, `temp_in_${id}.lua`);
+    const outputFile = path.join(TEMP_DIR, `temp_out_${id}.lua`);
 
     const cleanup = () => {
         try {
@@ -53,12 +61,15 @@ app.post('/api/obfuscate', (req, res) => {
     try {
         fs.writeFileSync(inputFile, rawCode);
 
+        // NOTE: Prometheus' cli.lua takes the input file as a plain
+        // positional argument — there is no --file flag. Passing --file
+        // was the bug causing every request to fail with "Obfuscation failed."
         execFile(
             'luajit',
             [
-                'Prometheus/cli.lua',
+                PROMETHEUS_CLI,
                 '--preset', 'Medium',
-                '--file', inputFile,
+                inputFile,
                 '--out', outputFile
             ],
             async (error, stdout, stderr) => {
@@ -75,7 +86,7 @@ app.post('/api/obfuscate', (req, res) => {
                     }
 
                     const obfuscatedCode = fs.readFileSync(outputFile, 'utf8');
-                    
+
                     // Upload sa Supabase bucket
                     const fileName = `${id}.lua`;
                     const { error: uploadError } = await supabase
@@ -409,3 +420,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+                                
