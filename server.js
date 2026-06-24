@@ -32,8 +32,6 @@ const bucketName = "obfuscated";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ================== PATH TO PROMETHEUS CLI ==================
-// __dirname-based so it resolves correctly no matter what the process's
-// working directory is on Render.
 const PROMETHEUS_CLI = path.join(__dirname, 'Prometheus', 'cli.lua');
 const TEMP_DIR = os.tmpdir();
 
@@ -64,14 +62,10 @@ app.post('/api/obfuscate', (req, res) => {
     try {
         fs.writeFileSync(inputFile, rawCode);
 
-        // Verify the file was actually written with the expected content
         const writtenCheck = fs.readFileSync(inputFile, 'utf8');
         console.log(`[${id}] Verified written file size: ${writtenCheck.length} bytes`);
         console.log(`[${id}] First 80 chars written:`, JSON.stringify(writtenCheck.slice(0, 80)));
 
-        // NOTE: Prometheus' cli.lua takes the input file as a plain
-        // positional argument — there is no --file flag. Passing --file
-        // was the bug causing every request to fail with "Obfuscation failed."
         execFile(
             'luajit',
             [
@@ -97,12 +91,19 @@ app.post('/api/obfuscate', (req, res) => {
 
                     const obfuscatedCode = fs.readFileSync(outputFile, 'utf8');
 
-                    // Upload sa Supabase bucket
+                    // ========== HEADER (DAGDAG) ==========
+                    const header = `-- Obfuscated by: Sttar Obfuscator
+-- https://sttar-obfuscator.netlify.app/`;
+
+                    // Isama ang header sa unahan ng obfuscated code
+                    const finalCode = header + '\n' + obfuscatedCode;
+
+                    // Upload sa Supabase bucket (gamit ang finalCode na may header)
                     const fileName = `${id}.lua`;
                     const { error: uploadError } = await supabase
                         .storage
                         .from(bucketName)
-                        .upload(fileName, Buffer.from(obfuscatedCode, 'utf8'), {
+                        .upload(fileName, Buffer.from(finalCode, 'utf8'), {
                             contentType: 'text/plain',
                             upsert: true
                         });
@@ -430,4 +431,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-                        
