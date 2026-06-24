@@ -1,4 +1,4 @@
-FROM node:20-bullseye
+FROM node:22-bullseye
 
 # Luajit/Lua5.1 are needed to run Prometheus' cli.lua
 RUN apt-get update && \
