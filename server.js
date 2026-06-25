@@ -27,6 +27,71 @@ const PASSWORD = "sttaralbiola";
 const PROMETHEUS_CLI = path.join(__dirname, 'Prometheus', 'cli.lua');
 const TEMP_DIR = os.tmpdir();
 
+// ================== ROOT ROUTE ==================
+app.get('/', (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sttar Obfuscator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+        .card {
+            background: rgba(20,20,20,0.8);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+        }
+        h1 {
+            font-size: 2.2em;
+            background: linear-gradient(135deg, #bb86fc, #03dac6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+        p { color: #aaa; margin-bottom: 20px; }
+        a {
+            display: inline-block;
+            background: linear-gradient(135deg, #bb86fc, #7c4dff);
+            color: #fff;
+            padding: 14px 30px;
+            border-radius: 30px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.3s;
+        }
+        a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(187,134,252,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Sttar Obfuscator</h1>
+        <p>Invalid route. If you want to use our obfuscator, please go to:</p>
+        <a href="/home">https://obfuscator-api-bzc1.onrender.com/home</a>
+    </div>
+</body>
+</html>`);
+});
+
 // ================== OBFS API (DIRECT CODE RESPONSE) ==================
 app.post('/api/obfuscate', (req, res) => {
     const rawCode = req.body.code;
@@ -76,8 +141,9 @@ app.post('/api/obfuscate', (req, res) => {
                     }
 
                     const obfuscatedCode = fs.readFileSync(outputFile, 'utf8');
-                    const header = `-- Obfuscated by: Sttar Obfuscator
--- https://sttar-obfuscator.netlify.app/`;
+
+                    // No emoji, simple header
+                    const header = `-- Obfuscated by Sttar Obfuscator https://obfuscator-api-bzc1.onrender.com/home`;
                     const finalCode = header + '\n' + obfuscatedCode;
 
                     cleanup();
@@ -100,7 +166,7 @@ app.post('/api/obfuscate', (req, res) => {
     }
 });
 
-// ================== HOME PAGE – OBFUSCATION TOOL ==================
+// ================== HOME PAGE – RESPONSIVE, NO EMOJI ==================
 app.get('/home', (req, res) => {
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -156,12 +222,12 @@ app.get('/home', (req, res) => {
             backdrop-filter: blur(25px);
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 24px;
-            padding: 40px;
+            padding: clamp(20px, 5vw, 40px);
             box-shadow: 0 30px 60px rgba(0,0,0,0.6);
             transition: transform 0.3s;
         }
         h1 {
-            font-size: 2.8em;
+            font-size: clamp(2em, 6vw, 2.8em);
             font-weight: 700;
             text-align: center;
             margin-bottom: 10px;
@@ -174,11 +240,11 @@ app.get('/home', (req, res) => {
             text-align: center;
             color: #888;
             margin-bottom: 30px;
-            font-size: 16px;
+            font-size: clamp(14px, 2vw, 16px);
         }
         textarea {
             width: 100%;
-            height: 280px;
+            height: clamp(200px, 50vh, 280px);
             background: #111;
             border: 1px solid #2a2a2a;
             border-radius: 16px;
@@ -200,9 +266,9 @@ app.get('/home', (req, res) => {
             background: linear-gradient(135deg, #bb86fc, #7c4dff);
             border: none;
             color: #fff;
-            font-size: 18px;
+            font-size: clamp(16px, 2.5vw, 18px);
             font-weight: 700;
-            padding: 16px 40px;
+            padding: 14px 35px;
             border-radius: 50px;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.3s;
@@ -210,6 +276,8 @@ app.get('/home', (req, res) => {
             text-transform: uppercase;
             position: relative;
             overflow: hidden;
+            width: 100%;
+            max-width: 300px;
         }
         .obfuscate-btn:hover {
             transform: translateY(-2px);
@@ -245,14 +313,18 @@ app.get('/home', (req, res) => {
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         .result-header h3 {
             color: #bb86fc;
             font-weight: 600;
+            font-size: 1.2em;
         }
         .action-btns {
             display: flex;
-            gap: 12px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
         .action-btns button, .action-btns a {
             background: rgba(187,134,252,0.15);
@@ -275,13 +347,13 @@ app.get('/home', (req, res) => {
             background: #111;
             border: 1px solid #2a2a2a;
             border-radius: 16px;
-            padding: 25px;
+            padding: 20px;
             font-family: 'Fira Code', monospace;
             font-size: 13px;
             overflow-x: auto;
             white-space: pre-wrap;
             word-break: break-word;
-            max-height: 450px;
+            max-height: 400px;
             color: #ccc;
             line-height: 1.6;
         }
@@ -298,6 +370,8 @@ app.get('/home', (req, res) => {
             font-weight: 600;
             z-index: 999;
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            font-size: 14px;
+            white-space: nowrap;
         }
         .toast.show {
             visibility: visible;
@@ -308,6 +382,14 @@ app.get('/home', (req, res) => {
             10% { opacity: 1; bottom: 30px; }
             90% { opacity: 1; bottom: 30px; }
             100% { opacity: 0; bottom: 20px; }
+        }
+        @media (max-width: 600px) {
+            .navbar { top: 10px; right: 10px; }
+            .navbar a { margin-left: 15px; font-size: 13px; }
+            .main-container { padding: 20px 15px; }
+            .action-btns { flex-direction: column; width: 100%; }
+            .action-btns button, .action-btns a { text-align: center; }
+            pre { font-size: 12px; }
         }
     </style>
 </head>
@@ -326,7 +408,7 @@ app.get('/home', (req, res) => {
         </div>
         <div class="result-section" id="resultSection">
             <div class="result-header">
-                <h3>✨ Obfuscated Result</h3>
+                <h3>Obfuscated Result</h3>
                 <div class="action-btns">
                     <button id="copyBtn">Copy</button>
                     <a id="downloadLink" href="#" download="">Download .lua</a>
@@ -350,10 +432,9 @@ app.get('/home', (req, res) => {
         obfBtn.addEventListener('click', async () => {
             const code = input.value.trim();
             if (!code) {
-                showToast('⚠️ Please enter some Lua code.');
+                showToast('Warning: Please enter some Lua code.');
                 return;
             }
-            // Show loading, hide result
             loading.style.display = 'block';
             resultSection.style.display = 'none';
             obfBtn.disabled = true;
@@ -379,7 +460,7 @@ app.get('/home', (req, res) => {
                 downloadLink.href = url;
                 downloadLink.download = filename;
             } catch (error) {
-                showToast('❌ Error: ' + error.message);
+                showToast('Error: ' + error.message);
             } finally {
                 loading.style.display = 'none';
                 obfBtn.disabled = false;
@@ -389,9 +470,9 @@ app.get('/home', (req, res) => {
         copyBtn.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(resultCode.textContent);
-                showToast('✅ Copied to clipboard!');
+                showToast('Copied to clipboard!');
             } catch (err) {
-                showToast('❌ Failed to copy');
+                showToast('Failed to copy');
             }
         });
 
@@ -405,7 +486,7 @@ app.get('/home', (req, res) => {
 </html>`);
 });
 
-// ================== DASHBOARD PAGE ==================
+// ================== DASHBOARD PAGE – RESPONSIVE, NO EMOJI ==================
 app.get('/dashboard', (req, res) => {
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -434,6 +515,7 @@ app.get('/dashboard', (req, res) => {
             position: fixed;
             top: 0; left: 0; bottom: 0;
             z-index: 5;
+            transition: transform 0.3s;
         }
         .sidebar h2 {
             font-size: 1.5em;
@@ -473,6 +555,7 @@ app.get('/dashboard', (req, res) => {
             padding: 60px 50px;
             flex: 1;
             animation: fadeIn 0.5s ease;
+            width: calc(100% - 260px);
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .content-panel {
@@ -480,7 +563,7 @@ app.get('/dashboard', (req, res) => {
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255,255,255,0.06);
             border-radius: 24px;
-            padding: 40px;
+            padding: clamp(25px, 5vw, 40px);
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
             display: none;
             animation: slideIn 0.3s ease-out;
@@ -491,7 +574,7 @@ app.get('/dashboard', (req, res) => {
             to { opacity: 1; transform: translateY(0); }
         }
         .content-panel h2 {
-            font-size: 2em;
+            font-size: clamp(1.5em, 4vw, 2em);
             margin-bottom: 20px;
             color: #bb86fc;
         }
@@ -499,57 +582,86 @@ app.get('/dashboard', (req, res) => {
             line-height: 1.8;
             color: #bbb;
             margin-bottom: 20px;
+            font-size: clamp(15px, 2vw, 16px);
         }
         .content-panel a {
             color: #03dac6;
             font-weight: 600;
         }
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: center;
-                padding: 15px;
-            }
-            .sidebar h2 { display: none; }
-            .main-content { margin-left: 0; padding: 20px; }
-            .sidebar a, .sidebar button { margin: 5px; padding: 10px 15px; }
+        .hamburger {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            background: rgba(20,20,20,0.8);
+            border: 1px solid #333;
+            color: #fff;
+            font-size: 24px;
+            padding: 8px 15px;
+            border-radius: 10px;
+            cursor: pointer;
         }
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar {
+                transform: translateX(-100%);
+                width: 260px;
+                padding-top: 60px;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .hamburger { display: block; }
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 20px;
+                margin-top: 60px;
+            }
+            .sidebar a, .sidebar button { margin: 5px 0; }
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 4;
+        }
+        .overlay.show { display: block; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
+    <button class="hamburger" id="hamburger">&#9776;</button>
+    <div class="overlay" id="overlay"></div>
+    <div class="sidebar" id="sidebar">
         <h2>Sttar</h2>
         <button class="tab-btn active" data-tab="about">What is Sttar?</button>
         <button class="tab-btn" data-tab="privacy">Privacy Policy</button>
         <button class="tab-btn" data-tab="usage">How to Use</button>
-        <a href="/docs" style="background:none;border:none;">API Docs 🔒</a>
+        <a href="/docs">API Docs (Locked)</a>
     </div>
     <div class="main-content">
         <div id="about" class="content-panel active">
-            <h2>🚀 What is Sttar Obfuscator?</h2>
-            <p>Sttar Obfuscator is a high‑performance Lua code protection tool built for Roblox scripters. It transforms readable source code into a secure, obfuscated version that is extremely difficult to reverse‑engineer, while keeping your scripts fully functional. Powered by the Prometheus engine with custom optimizations, Sttar delivers robust obfuscation without compromising execution speed.</p>
-            <p>Our mission is to give developers a free, easy‑to‑use layer of security for their intellectual property directly from the browser.</p>
+            <h2>What is Sttar Obfuscator?</h2>
+            <p>Sttar Obfuscator is a high-performance Lua code protection tool built for Roblox scripters. It transforms readable source code into a secure, obfuscated version that is extremely difficult to reverse-engineer, while keeping your scripts fully functional. Powered by the Prometheus engine with custom optimizations, Sttar delivers robust obfuscation without compromising execution speed.</p>
+            <p>Our mission is to give developers a free, easy-to-use layer of security for their intellectual property directly from the browser.</p>
         </div>
         <div id="privacy" class="content-panel">
-            <h2>🔒 Privacy Policy</h2>
-            <p>We do not store, log, or share any Lua code you submit. All processing is done in‑memory and temporary files are deleted immediately after obfuscation. No personal data is collected. Your scripts remain yours alone.</p>
+            <h2>Privacy Policy</h2>
+            <p>We do not store, log, or share any Lua code you submit. All processing is done in-memory and temporary files are deleted immediately after obfuscation. No personal data is collected. Your scripts remain yours alone.</p>
             <p>For any questions, contact <a href="https://sttar-obfuscator.netlify.app" target="_blank">sttar-obfuscator.netlify.app</a>.</p>
         </div>
         <div id="usage" class="content-panel">
-            <h2>📘 How to Use</h2>
+            <h2>How to Use</h2>
             <p><strong>Step 1:</strong> Go to the <a href="/home">Obfuscator tool</a>.</p>
             <p><strong>Step 2:</strong> Paste your Lua script into the text box.</p>
-            <p><strong>Step 3:</strong> Click the <em>OBFUSCATE</em> button and wait for the magic.</p>
-            <p><strong>Step 4:</strong> Copy the result or download it as a <code>.lua</code> file.</p>
+            <p><strong>Step 3:</strong> Click the OBFUSCATE button and wait for the process.</p>
+            <p><strong>Step 4:</strong> Copy the result or download it as a .lua file.</p>
             <p>You can then load the obfuscated script in Roblox using a standard executor.</p>
             <p>Need programmatic access? Use our <a href="/docs">API Docs</a> (password required).</p>
         </div>
     </div>
     <script>
+        // Tab switching
         const btns = document.querySelectorAll('.tab-btn');
         const panels = document.querySelectorAll('.content-panel');
         btns.forEach(btn => {
@@ -559,14 +671,39 @@ app.get('/dashboard', (req, res) => {
                 btn.classList.add('active');
                 panels.forEach(p => p.classList.remove('active'));
                 document.getElementById(tabId).classList.add('active');
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('open');
+                    overlay.classList.remove('show');
+                }
             });
+        });
+
+        // Hamburger menu
+        const hamburger = document.getElementById('hamburger');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        hamburger.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
+        });
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+        });
+
+        // Close sidebar when link to /docs is clicked
+        document.querySelector('.sidebar a[href="/docs"]').addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('show');
+            }
         });
     </script>
 </body>
 </html>`);
 });
 
-// ================== API DOCS (Password Protected) ==================
+// ================== API DOCS (Password Protected) – NO EMOJI ==================
 app.get('/docs', (req, res) => {
     if (!req.session.authenticated) {
         return res.send(`<!DOCTYPE html>
@@ -590,7 +727,7 @@ app.get('/docs', (req, res) => {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(15px);
             border-radius: 20px;
-            padding: 40px;
+            padding: clamp(30px, 8vw, 40px);
             width: 100%;
             max-width: 380px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
@@ -601,7 +738,7 @@ app.get('/docs', (req, res) => {
             color: #fff;
             margin-bottom: 20px;
             font-weight: 600;
-            font-size: 1.8em;
+            font-size: clamp(1.5em, 5vw, 1.8em);
         }
         .card input[type="password"] {
             width: 100%;
@@ -645,7 +782,7 @@ app.get('/docs', (req, res) => {
 </head>
 <body>
     <div class="card">
-        <h2>🔐 Obfuscator API</h2>
+        <h2>Obfuscator API</h2>
         <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">Enter password to view docs</p>
         <form method="POST" action="/docs">
             <input type="password" name="password" placeholder="Password" required>
@@ -656,7 +793,7 @@ app.get('/docs', (req, res) => {
 </html>`);
     }
 
-    // If authenticated, show the actual docs (same old design)
+    // Authenticated docs page
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -675,7 +812,7 @@ app.get('/docs', (req, res) => {
         .container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: clamp(20px, 5vw, 40px) 20px;
         }
         .header {
             display: flex;
@@ -688,7 +825,7 @@ app.get('/docs', (req, res) => {
             padding-bottom: 20px;
         }
         .header h1 {
-            font-size: 2.2em;
+            font-size: clamp(1.8em, 5vw, 2.2em);
             font-weight: 700;
             background: linear-gradient(135deg, #a78bfa, #f472b6);
             -webkit-background-clip: text;
@@ -710,7 +847,7 @@ app.get('/docs', (req, res) => {
         .card {
             background: #1e293b;
             border-radius: 16px;
-            padding: 30px;
+            padding: clamp(20px, 4vw, 30px);
             margin-bottom: 30px;
             border: 1px solid #334155;
             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
@@ -726,7 +863,7 @@ app.get('/docs', (req, res) => {
             border-radius: 12px;
             padding: 20px;
             font-family: 'Fira Code', monospace;
-            font-size: 15px;
+            font-size: clamp(13px, 2vw, 15px);
             overflow-x: auto;
             white-space: pre-wrap;
             word-break: break-word;
@@ -759,31 +896,31 @@ app.get('/docs', (req, res) => {
         }
         @media (max-width: 600px) {
             .container { padding: 20px 10px; }
-            .header h1 { font-size: 1.6em; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📚 Obfuscator API</h1>
+            <h1>Obfuscator API Documentation</h1>
             <a href="/logout" class="logout-btn">Logout</a>
         </div>
         <div class="card">
-            <h2>🔹 Endpoint</h2>
+            <h2>Endpoint</h2>
             <p><span class="method">POST</span><span class="endpoint">/api/obfuscate</span></p>
-            <p style="margin-top: 15px; color: #94a3b8;">Send Lua code, <strong>directly receive obfuscated code</strong> (plain text).</p>
+            <p style="margin-top: 15px; color: #94a3b8;">Send Lua code, directly receive obfuscated code (plain text).</p>
         </div>
         <div class="card">
-            <h2>📥 Request Body</h2>
+            <h2>Request Body</h2>
             <div class="code-block">{ "code": "print('Hello world')" }</div>
         </div>
         <div class="card">
-            <h2>📤 Response (Obfuscated Code)</h2>
-            <div class="code-block">-- Obfuscated by: Sttar Obfuscator\n-- https://sttar-obfuscator.netlify.app/\n[... obfuscated Lua code ...]</div>
+            <h2>Response (Obfuscated Code)</h2>
+            <div class="code-block">-- Obfuscated by Sttar Obfuscator https://obfuscator-api-bzc1.onrender.com/home
+[... obfuscated Lua code ...]</div>
         </div>
         <div class="note">
-            ⚡ <strong>Note:</strong> Direct text response, no external storage. Medium preset.
+            <strong>Note:</strong> Direct text response, no external storage. Medium preset.
         </div>
     </div>
 </body>
@@ -815,16 +952,17 @@ app.post('/docs', (req, res) => {
             height: 100vh;
             margin: 0;
             text-align: center;
+            padding: 20px;
         }
-        h2 { color: #f87171; }
+        h2 { color: #f87171; font-size: clamp(1.5em, 5vw, 2em); }
         a { color: #a78bfa; text-decoration: none; margin-top: 20px; }
         a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-    <h2>❌ Wrong password</h2>
+    <h2>Wrong password</h2>
     <p>Please try again.</p>
-    <a href="/docs">← Back to Login</a>
+    <a href="/docs">Back to Login</a>
 </body>
 </html>`);
 });
@@ -836,7 +974,7 @@ app.get('/logout', (req, res) => {
     });
 });
 
-// ================== HEALTH CHECK (optional) ==================
+// ================== HEALTH CHECK ==================
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
