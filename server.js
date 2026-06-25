@@ -6,7 +6,6 @@ const path = require('path');
 const session = require('express-session');
 const { execFile } = require('child_process');
 const { randomUUID } = require('crypto');
-const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 
@@ -24,18 +23,11 @@ app.use(session({
 
 const PASSWORD = "sttaralbiola";
 
-// ================== SUPABASE SETUP (HARDCODED) ==================
-const supabaseUrl = "https://vwtzbbxzcokqiggkmowc.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3dHpiYnh6Y29rcWlnZ2ttb3djIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjIzMDQ0MiwiZXhwIjoyMDk3ODA2NDQyfQ.vtZ9uXyLXLnwCxglqnHvIqqM8oxuWOYt4Qi-ludGmGo";
-const bucketName = "obfuscated";
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 // ================== PATH TO PROMETHEUS CLI ==================
 const PROMETHEUS_CLI = path.join(__dirname, 'Prometheus', 'cli.lua');
 const TEMP_DIR = os.tmpdir();
 
-// ================== OBFS API (LOADER SCRIPT) ==================
+// ================== OBFS API (DIRECT CODE RESPONSE) ==================
 app.post('/api/obfuscate', (req, res) => {
     const rawCode = req.body.code;
 
@@ -66,6 +58,7 @@ app.post('/api/obfuscate', (req, res) => {
         console.log(`[${id}] Verified written file size: ${writtenCheck.length} bytes`);
         console.log(`[${id}] First 80 chars written:`, JSON.stringify(writtenCheck.slice(0, 80)));
 
+        // Hindi na async dahil walang Supabase upload
         execFile(
             'luajit',
             [
@@ -74,7 +67,7 @@ app.post('/api/obfuscate', (req, res) => {
                 inputFile,
                 '--out', outputFile
             ],
-            async (error, stdout, stderr) => {
+            (error, stdout, stderr) => {
                 console.log(`[${id}] CLI stdout:`, stdout);
                 console.log(`[${id}] CLI stderr:`, stderr);
                 if (error) {
@@ -91,42 +84,16 @@ app.post('/api/obfuscate', (req, res) => {
 
                     const obfuscatedCode = fs.readFileSync(outputFile, 'utf8');
 
-                    // ========== HEADER (DAGDAG) ==========
+                    // ========== HEADER ==========
                     const header = `-- Obfuscated by: Sttar Obfuscator
 -- https://sttar-obfuscator.netlify.app/`;
-
-                    // Isama ang header sa unahan ng obfuscated code
                     const finalCode = header + '\n' + obfuscatedCode;
 
-                    // Upload sa Supabase bucket (gamit ang finalCode na may header)
-                    const fileName = `${id}.lua`;
-                    const { error: uploadError } = await supabase
-                        .storage
-                        .from(bucketName)
-                        .upload(fileName, Buffer.from(finalCode, 'utf8'), {
-                            contentType: 'text/plain',
-                            upsert: true
-                        });
-
-                    if (uploadError) {
-                        console.error("Upload error:", uploadError.message);
-                        cleanup();
-                        return res.status(500).json({ error: 'Failed to upload.' });
-                    }
-
-                    // Kunin public URL
-                    const { data: urlData } = supabase
-                        .storage
-                        .from(bucketName)
-                        .getPublicUrl(fileName);
-
-                    const publicUrl = urlData.publicUrl;
-
-                    // Bumuo ng loader script
-                    const loader = `loadstring(game:HttpGet("${publicUrl}"))()`;
-
                     cleanup();
-                    return res.json({ result: loader });
+
+                    // I-send bilang plain text
+                    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+                    return res.send(finalCode);
 
                 } catch (err) {
                     console.error("Error:", err.message);
@@ -352,7 +319,7 @@ app.get('/docs', (req, res) => {
                 <div class="card">
                     <h2>🔹 Endpoint</h2>
                     <p><span class="method">POST</span><span class="endpoint">/api/obfuscate</span></p>
-                    <p style="margin-top: 15px; color: #94a3b8;">Send Lua code, get a <strong>loader script</strong> with obfuscated code stored on Supabase.</p>
+                    <p style="margin-top: 15px; color: #94a3b8;">Send Lua code, <strong>directly receive obfuscated code</strong> (plain text).</p>
                 </div>
 
                 <div class="card">
@@ -363,14 +330,16 @@ app.get('/docs', (req, res) => {
                 </div>
 
                 <div class="card">
-                    <h2>📤 Response (Loader)</h2>
+                    <h2>📤 Response (Obfuscated Code)</h2>
                     <div class="code-block">
-loadstring(game:HttpGet("https://...supabase.../obfuscated/..."))()
+-- Obfuscated by: Sttar Obfuscator
+-- https://sttar-obfuscator.netlify.app/
+[... obfuscated Lua code ...]
                     </div>
                 </div>
 
                 <div class="note">
-                    ⚡ <strong>Note:</strong> Obfuscated code is stored securely in Supabase. Medium preset.
+                    ⚡ <strong>Note:</strong> Direct text response, no external storage. Medium preset.
                 </div>
             </div>
         </body>
